@@ -6,6 +6,11 @@ directories:
 files:
   - out/**/*
   - package.json
+asarUnpack:
+  # ORT WASM runtime needs to be on the real filesystem because the renderer
+  # loads it via dynamic ES module import + a proxy Worker, both of which fail
+  # against the virtual asar archive in production.
+  - out/renderer/ort/**
 win:
   target: nsis
   artifactName: otak-sampler-${version}-setup.${ext}
