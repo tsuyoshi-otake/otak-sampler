@@ -52,7 +52,10 @@ export async function ensureSession(
     onProgress?.({ phase: 'load' });
 
     ort.env.wasm.proxy = true;
-    ort.env.wasm.wasmPaths = new URL('./ort/', document.baseURI).href;
+    // Served from main via the app-ort:// custom protocol so production
+    // packaging (asar redirect + file:// .mjs MIME) doesn't break dynamic
+    // ES module loading of the ORT WASM runtime.
+    ort.env.wasm.wasmPaths = 'app-ort://wasm/';
     ort.env.wasm.numThreads = 1;
     ort.env.wasm.simd = true;
 
