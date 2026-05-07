@@ -136,15 +136,9 @@ scripts/copy-ort-wasm.mjs   Pre-bundle copy of ORT WASM into renderer/public/ort
 
 ## Auto-updates
 
-The app checks the GitHub releases feed embedded in the binary on launch. When a new release is available, a banner at the top of the window lets you download it and restart in place.
+The app checks the GitHub releases feed embedded in the binary on launch. When a new release is available, a banner at the top of the window lets you download it and restart in place. No token or sign-in is required — the repository is public and electron-updater fetches anonymously.
 
-This repository is **private**, so electron-updater needs a GitHub token to fetch releases. Set `GH_TOKEN` to a fine-grained PAT scoped to `otak-sampler` (`Contents: Read-only`) in your Windows user environment variables before launching the app:
-
-```powershell
-[Environment]::SetEnvironmentVariable('GH_TOKEN', 'github_pat_xxxxx', 'User')
-```
-
-Without a token, the silent check fails quietly. The toolbar ⓘ button still works as a manual fallback — click **Open releases page** to grab the latest installer in your browser.
+The toolbar ⓘ button gives manual access: a "Check for updates" command and an **Open releases page** link to the GitHub releases UI as a fallback.
 
 ## Notes and limitations
 
