@@ -4,6 +4,7 @@ import { audioEngine } from '../audio/AudioEngine';
 import { RecordButton } from './RecordButton';
 import { hydrateBank } from '../state/hydrate';
 import { OutputDeviceMenu } from './OutputDeviceMenu';
+import { AboutMenu } from './AboutMenu';
 
 export function Toolbar() {
   const selectedPad = useSampler((s) => s.bank.pads[s.bank.selectedPadId]);
@@ -15,6 +16,7 @@ export function Toolbar() {
   const markPadUnloaded = useSampler((s) => s.markPadUnloaded);
   const deviceError = useSampler((s) => s.deviceError);
   const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
+  const [aboutMenuOpen, setAboutMenuOpen] = useState(false);
 
   const onClear = async (): Promise<void> => {
     if (!selectedPad) return;
@@ -139,6 +141,21 @@ export function Toolbar() {
         >
           Import
         </button>
+        <div className="relative">
+          <button
+            onClick={() => setAboutMenuOpen((v) => !v)}
+            title="About"
+            aria-label="About"
+            className="px-2 py-1.5 rounded text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+          </button>
+          {aboutMenuOpen && <AboutMenu onClose={() => setAboutMenuOpen(false)} />}
+        </div>
       </div>
     </div>
   );

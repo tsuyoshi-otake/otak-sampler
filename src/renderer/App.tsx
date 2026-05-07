@@ -6,6 +6,7 @@ import { WaveformEditor } from './components/WaveformEditor';
 import { ChopMode } from './components/ChopMode';
 import { PianoMode } from './components/PianoMode';
 import { LooperPanel } from './components/LooperPanel';
+import { UpdateBanner } from './components/UpdateBanner';
 import { hydrateBank, hydrateSettings } from './state/hydrate';
 
 export function App() {
@@ -29,6 +30,7 @@ export function App() {
 
   return (
     <div className="h-full flex flex-col">
+      <UpdateBanner />
       <Toolbar />
       <main className="flex-1 overflow-hidden flex flex-col">
         <div className="flex-1 overflow-auto p-6">

@@ -5,6 +5,7 @@ import { registerSamplesIpc } from './ipc/samples';
 import { registerModelsIpc } from './ipc/models';
 import { registerBankIoIpc } from './ipc/bankio';
 import { registerSettingsIpc } from './ipc/settings';
+import { registerAppIpc, initAutoUpdater } from './ipc/app';
 
 app.whenReady().then(() => {
   // Register loopback handler BEFORE any renderer can call getDisplayMedia.
@@ -30,7 +31,9 @@ app.whenReady().then(() => {
   registerModelsIpc();
   registerBankIoIpc();
   registerSettingsIpc();
+  registerAppIpc();
   createMainWindow();
+  initAutoUpdater();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();

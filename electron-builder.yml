@@ -13,3 +13,15 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: otak-sampler
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+  installerLanguages:
+    - en_US
+    - ja_JP
+publish:
+  provider: github
+  owner: tsuyoshi-otake
+  repo: otak-sampler

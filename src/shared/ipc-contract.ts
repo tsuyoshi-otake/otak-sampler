@@ -12,8 +12,22 @@ export const IPC = {
   bankExport: 'bank:export',
   bankImport: 'bank:import',
   settingsRead: 'settings:read',
-  settingsWrite: 'settings:write'
+  settingsWrite: 'settings:write',
+  appVersion: 'app:version',
+  appOpenExternal: 'app:openExternal',
+  updaterCheck: 'updater:check',
+  updaterDownload: 'updater:download',
+  updaterQuitAndInstall: 'updater:quitAndInstall',
+  updaterEvent: 'updater:event'
 } as const;
+
+export type UpdaterEvent =
+  | { kind: 'checking' }
+  | { kind: 'available'; version: string }
+  | { kind: 'not-available'; version: string }
+  | { kind: 'progress'; percent: number }
+  | { kind: 'downloaded'; version: string }
+  | { kind: 'error'; message: string };
 
 export type ModelKey = 'voc_ft';
 
@@ -67,6 +81,16 @@ export interface SamplerApi {
   settings: {
     read: () => Promise<SettingsReadResponse>;
     write: (settings: SettingsWriteRequest) => Promise<void>;
+  };
+  app: {
+    version: () => Promise<string>;
+    openExternal: (url: string) => Promise<void>;
+  };
+  updater: {
+    check: () => Promise<void>;
+    download: () => Promise<void>;
+    quitAndInstall: () => Promise<void>;
+    onEvent: (cb: (event: UpdaterEvent) => void) => () => void;
   };
 }
 
