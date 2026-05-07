@@ -1,0 +1,15 @@
+appId: dev.otake.otak-sampler
+productName: otak-sampler
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+win:
+  target: nsis
+  artifactName: otak-sampler-${version}-setup.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true

@@ -1,0 +1,46 @@
+{
+  "name": "otak-sampler",
+  "version": "0.1.0",
+  "description": "Desktop sampler that records system audio loopback to 12 keyboard-triggered pads with inline waveform editing.",
+  "private": true,
+  "author": "tsuyoshi-otake",
+  "license": "MIT",
+  "main": "out/main/index.js",
+  "scripts": {
+    "copy-ort": "node scripts/copy-ort-wasm.mjs",
+    "predev": "node scripts/copy-ort-wasm.mjs",
+    "prebuild": "node scripts/copy-ort-wasm.mjs",
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "package": "npm run build && electron-builder --win nsis",
+    "lint": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "jest"
+  },
+  "dependencies": {
+    "fft.js": "^4.0.4",
+    "jszip": "^3.10.1",
+    "onnxruntime-web": "^1.25.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "wavesurfer.js": "^7.12.6",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "electron": "^32.2.7",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^3.0.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7"
+  }
+}

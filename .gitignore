@@ -1,0 +1,14 @@
+node_modules/
+out/
+dist/
+.vite/
+*.log
+.DS_Store
+desktop.ini
+.env
+.env.*
+!.env.example
+.cache/
+coverage/
+*.tsbuildinfo
+src/renderer/public/ort/
