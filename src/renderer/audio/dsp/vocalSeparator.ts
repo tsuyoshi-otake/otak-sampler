@@ -39,6 +39,36 @@ let session: ort.InferenceSession | null = null;
 let inputName: string | null = null;
 let outputName: string | null = null;
 
+// ORT's dynamic ES module loader (in onnxruntime-web 1.25) tries to
+// `import(wasmPaths + 'ort-wasm-simd-threaded.mjs')` and Chromium's ESM
+// resolver rejects custom-scheme URLs (app-ort://) and balks at file://
+// .mjs MIME inside packaged builds. Blob URLs work in every context: we
+// fetch the bytes through the `app-ort://` protocol the main process
+// registers (which is just fetch — no module-import involvement) and then
+// hand ORT blob: URLs that the ESM resolver and WebAssembly loader both
+// accept.
+let ortBlobs: { mjs: string; wasm: string } | null = null;
+
+async function ensureOrtBlobs(): Promise<{ mjs: string; wasm: string }> {
+  if (ortBlobs) return ortBlobs;
+  const base = 'app-ort://wasm/';
+  const [mjsResp, wasmResp] = await Promise.all([
+    fetch(base + 'ort-wasm-simd-threaded.mjs'),
+    fetch(base + 'ort-wasm-simd-threaded.wasm')
+  ]);
+  if (!mjsResp.ok) throw new Error(`Failed to fetch ORT loader (${mjsResp.status})`);
+  if (!wasmResp.ok) throw new Error(`Failed to fetch ORT wasm (${wasmResp.status})`);
+  const [mjsBuf, wasmBuf] = await Promise.all([
+    mjsResp.arrayBuffer(),
+    wasmResp.arrayBuffer()
+  ]);
+  ortBlobs = {
+    mjs: URL.createObjectURL(new Blob([mjsBuf], { type: 'text/javascript' })),
+    wasm: URL.createObjectURL(new Blob([wasmBuf], { type: 'application/wasm' }))
+  };
+  return ortBlobs;
+}
+
 export async function ensureSession(
   modelKey: ModelKey,
   onProgress?: (p: SeparationProgress) => void
@@ -51,11 +81,14 @@ export async function ensureSession(
     const bytes = await window.sampler.models.ensure(modelKey);
     onProgress?.({ phase: 'load' });
 
+    const blobs = await ensureOrtBlobs();
     ort.env.wasm.proxy = true;
-    // Served from main via the app-ort:// custom protocol so production
-    // packaging (asar redirect + file:// .mjs MIME) doesn't break dynamic
-    // ES module loading of the ORT WASM runtime.
-    ort.env.wasm.wasmPaths = 'app-ort://wasm/';
+    // Per-file blob URLs let ORT's ESM dynamic import + WebAssembly loader
+    // bypass the file:// / asar / custom-protocol pitfalls entirely.
+    ort.env.wasm.wasmPaths = {
+      mjs: blobs.mjs,
+      wasm: blobs.wasm
+    };
     ort.env.wasm.numThreads = 1;
     ort.env.wasm.simd = true;
 
