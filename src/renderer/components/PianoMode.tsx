@@ -8,38 +8,46 @@ export function PianoMode() {
   return <PianoBody />;
 }
 
-// 2-row chromatic keymap, addressed by KeyboardEvent.code so it works the
-// same on JIS and US layouts:
-//   bottom row A..] (or A..\ on US) → octave 0 (12 semitones, root..root+11)
-//   top row    Q..[ (or Q..] on US) → octave 1 (12 semitones, root+12..root+23)
-const CODE_MAP: Record<string, number> = {
-  // Bottom row
-  KeyA: 0,
-  KeyS: 1,
-  KeyD: 2,
-  KeyF: 3,
-  KeyG: 4,
-  KeyH: 5,
-  KeyJ: 6,
-  KeyK: 7,
-  KeyL: 8,
-  Semicolon: 9,
-  Quote: 10,
-  Backslash: 11,
-  // Top row
-  KeyQ: 12,
-  KeyW: 13,
-  KeyE: 14,
-  KeyR: 15,
-  KeyT: 16,
-  KeyY: 17,
-  KeyU: 18,
-  KeyI: 19,
-  KeyO: 20,
-  KeyP: 21,
-  BracketLeft: 22,
-  BracketRight: 23
-};
+// 2-row diatonic keymap addressed by KeyboardEvent.code so JIS and US layouts
+// both work. Each row maps to 12 consecutive white keys: pressing the home
+// row left-to-right walks up the C-major scale, top row continues the scale
+// for another ~1.7 octaves. Black keys (sharps/flats) are click-only via the
+// piano UI — keep computer keys diatonic so the layout matches the visual
+// piano without zigzagging.
+//   Home row A..\ (US) / A..] (JIS)  → C D E F G A B C D E F G  (semitones 0..19)
+//   Top row  Q..] (US) / Q..[ (JIS) → A B C D E F G A B C D E  (semitones 21..40)
+const WHITE_SEMITONES = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24, 26, 28, 29, 31, 33, 35, 36, 38, 40];
+
+const ORDERED_CODES = [
+  'KeyA',
+  'KeyS',
+  'KeyD',
+  'KeyF',
+  'KeyG',
+  'KeyH',
+  'KeyJ',
+  'KeyK',
+  'KeyL',
+  'Semicolon',
+  'Quote',
+  'Backslash',
+  'KeyQ',
+  'KeyW',
+  'KeyE',
+  'KeyR',
+  'KeyT',
+  'KeyY',
+  'KeyU',
+  'KeyI',
+  'KeyO',
+  'KeyP',
+  'BracketLeft',
+  'BracketRight'
+] as const;
+
+const CODE_MAP: Record<string, number> = Object.fromEntries(
+  ORDERED_CODES.map((code, i) => [code, WHITE_SEMITONES[i] ?? 0])
+);
 
 // US-keyboard fallback labels for each code, used when the layout map API
 // is not available. JIS labels (`:`, `]`, `@`, `[`) are derived at runtime
@@ -90,11 +98,11 @@ function buildKeyboard(
   octaveShift: number,
   labels: Record<string, string>
 ): KeyDef[] {
-  // Show 25 notes — two full octaves from root + the upper C — so both
-  // mapped rows are visible with a closing C on the right.
+  // Cover the full mapped range (0..40 semitones from root) so every mapped
+  // computer key is visible. 41 chromatic notes ≈ 25 white + 16 black.
   const baseMidi = rootNote + octaveShift * 12;
   const notes: KeyDef[] = [];
-  for (let i = 0; i < 25; i++) {
+  for (let i = 0; i <= 40; i++) {
     const midi = baseMidi + i;
     const offset = midi - baseMidi;
     const code = Object.entries(CODE_MAP).find(([, idx]) => idx === offset)?.[0];
@@ -248,7 +256,7 @@ function PianoBody() {
       onClick={closePiano}
     >
       <div
-        className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-xl w-[920px] max-h-[90vh] overflow-auto"
+        className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-xl w-[1200px] max-w-[95vw] max-h-[90vh] overflow-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
@@ -386,9 +394,9 @@ function PianoBody() {
         </div>
 
         <div className="mt-3 text-[11px] text-zinc-500 leading-relaxed">
-          Bottom row (A〜{keyLabels.Backslash ?? ']'}) = octave 0 chromatic (12 semitones from root).
-          Top row (Q〜{keyLabels.BracketRight ?? ']'}) = octave 1 chromatic.
-          Z / X shift the whole keyboard ±octave. Esc closes.
+          Home row (A〜{keyLabels.Backslash ?? '\\'}) = 12 white keys ascending from root.
+          Top row (Q〜{keyLabels.BracketRight ?? ']'}) = the next 12 white keys.
+          Click black keys with the mouse to play sharps. Z / X shift the whole keyboard ±octave. Esc closes.
         </div>
       </div>
     </div>

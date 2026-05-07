@@ -13,7 +13,7 @@ A Windows desktop sampler with a 12-pad grid, a 4-slot looper, a piano mode for 
   Model (≈67 MB) is downloaded on first use and cached under `%APPDATA%`.
 - **Chop mode** — load or record a long source, drag-select multiple slices on the waveform, and assign each slice to a pad with one click. Auto-equal split into 2 / 4 / 8 / 12 segments.
 - **Looper** — a 4-slot panel docked under the pads. Each slot can either pull a pad's buffer or record its own loop from PC loopback, then play it continuously while you trigger pads on top.
-- **Piano mode** — modal that maps any pad's sample across two octaves chromatically. Bottom row `A..]` covers one octave, top row `Q..[` the next. Polyphonic, with per-key release (no clicks). Z / X shift octaves.
+- **Piano mode** — modal that maps any pad's sample across the keyboard diatonically. Home row `A S D F G H J K L ; ' \\` walks 12 consecutive white keys starting at the root; top row `Q W E R T Y U I O P [ ]` continues with the next 12 — 24 white keys total (~3.4 octaves). Click black keys with the mouse for sharps. Polyphonic, per-key release. Z / X shift octaves.
 - **Output device routing** — choose any audio output for primary playback (e.g. a virtual cable like VB-Cable) plus an optional monitor output. Lets you use otak-sampler as your meeting "mic" while still hearing yourself.
 - **Bank export / import** as a single `.sampler` file (ZIP containing `bank.json`, pad WAVs, and looper WAVs) — share an entire kit in one drag-and-drop.
 - **Persistent across launches** — pads, looper slots, samples, keymap, and output device choice live in `%APPDATA%/otak-sampler/`.
@@ -53,7 +53,7 @@ npm run package
 5. **Edit** with double-click on the pad. Drag the green region's handles to trim, slide *Fade in / Fade out / Gain*, optionally hit **Vocal isolate** / **Vocal cut**, then **Save**.
 6. **Chop** a longer recording: toolbar → *Chop*. Record or **Load WAV…**, drag on the waveform to add slices (or **Auto Equal × N**), click any pad number on a slice's row to commit it.
 7. **Loop** a phrase: open the *Looper* panel under the grid. On any of the 4 slots, click **Load from pad** to copy a pad's buffer or **● Rec** to record fresh loopback audio. **▶ Play** on a slot starts continuous looping; pads keep working on top.
-8. **Play pitched** with *Piano* in the toolbar. Pick a source pad, set the root note, then play `A S D F G H J K L ; ' \\` for one octave and `Q W E R T Y U I O P [ ]` for the next. `Z` / `X` shift octaves. The mapping uses physical key positions, so JIS and US layouts both work.
+8. **Play pitched** with *Piano* in the toolbar. Pick a source pad, set the root note, then walk the white keys diatonically with the home row `A S D F G H J K L ; ' \\` and continue on the top row `Q W E R T Y U I O P [ ]`. Mouse-click any black key for a sharp. `Z` / `X` shift octaves. The mapping uses physical key positions, so JIS and US layouts both work.
 9. **Share** a kit: toolbar → *Export* → save the `.sampler` file. On another machine, *Import* the same file (loops included).
 
 ## Use otak-sampler in meetings
