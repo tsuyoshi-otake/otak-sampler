@@ -9,9 +9,9 @@ export function registerSettingsIpc(): void {
     const path = await resolveSettingsFile();
     try {
       const raw = await readFile(path, 'utf-8');
-      const parsed = JSON.parse(raw) as SettingsFile;
+      const parsed = JSON.parse(raw) as Partial<SettingsFile> & { version: number };
       if (parsed.version !== 1) return defaultSettings();
-      return parsed;
+      return { ...defaultSettings(), ...parsed, version: 1 } as SettingsFile;
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
         const fresh = defaultSettings();

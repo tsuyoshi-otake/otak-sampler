@@ -1,13 +1,16 @@
-// Build a verbose, copy-pasteable error message for loopback recording
-// failures. Surfaces the underlying DOMException name + message so the user
-// (and bug reports) get something actionable instead of "didn't work".
+// Build a verbose, copy-pasteable error message for recording failures
+// (loopback OR microphone). Surfaces the underlying DOMException name +
+// message so the user (and bug reports) get something actionable instead
+// of a vague "didn't work".
+
+import type { RecordingSource } from '../../shared/settings-schema';
 
 interface NamedError {
   name?: string;
   message?: string;
 }
 
-const HINTS: Record<string, string> = {
+const LOOPBACK_HINTS: Record<string, string> = {
   NotAllowedError: [
     'Windows がループバック共有を拒否しました。',
     '・設定 → プライバシーとセキュリティ → 画面記録 で otak-sampler を許可',
@@ -32,14 +35,45 @@ const HINTS: Record<string, string> = {
   ].join('\n')
 };
 
-export function describeLoopbackError(err: unknown, action: '録音' | 'ループ録音' = '録音'): string {
+const MIC_HINTS: Record<string, string> = {
+  NotAllowedError: [
+    'マイクへのアクセスが拒否されました。',
+    '・設定 → プライバシーとセキュリティ → マイク で otak-sampler を許可',
+    '・「アプリがマイクにアクセスできるようにする」が ON か確認',
+    '・最初の許可プロンプトを誤って「ブロック」した場合、本体再起動で再試行'
+  ].join('\n'),
+  NotFoundError: [
+    'マイクデバイスが見つかりませんでした。',
+    '・Windows のサウンド設定で入力デバイスが認識されているか確認',
+    '・USB マイクは別ポートに差し替え',
+    '・既定の入力デバイスが正しく設定されているか確認'
+  ].join('\n'),
+  AbortError: 'マイク権限プロンプトがキャンセルされました。もう一度試してください。',
+  NotReadableError: [
+    'マイクが他アプリに占有されています。',
+    '・通話アプリ (Zoom / Teams / Discord) や録音ソフトを終了',
+    '・otak-sampler を再起動',
+    '・Windows のサウンド設定で「アプリの排他モード」を無効化'
+  ].join('\n'),
+  OverconstrainedError:
+    'マイクの制約条件が満たせませんでした。サンプルレートやチャンネル設定を確認してください。'
+};
+
+export function describeLoopbackError(
+  err: unknown,
+  action: '録音' | 'ループ録音' = '録音',
+  source: RecordingSource = 'loopback'
+): string {
   const e = err as NamedError;
   const name = e?.name ?? 'Error';
   const message = e?.message ?? String(err);
-  const hint = HINTS[name];
+  const hints = source === 'mic' ? MIC_HINTS : LOOPBACK_HINTS;
+  const hint = hints[name];
   const lines = [`${action}を開始できませんでした。`, '', `${name}: ${message}`];
   if (hint) {
     lines.push('', hint);
+  } else if (source === 'mic') {
+    lines.push('', 'Windows のプライバシー設定で「マイク」が許可されているか確認してください。');
   } else {
     lines.push(
       '',

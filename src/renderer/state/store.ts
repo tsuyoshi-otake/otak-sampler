@@ -5,7 +5,11 @@ import {
   type PadConfig,
   type LooperSlotConfig
 } from '../../shared/bank-schema';
-import { defaultSettings, type SettingsFile } from '../../shared/settings-schema';
+import {
+  defaultSettings,
+  type SettingsFile,
+  type RecordingSource
+} from '../../shared/settings-schema';
 import type { RecordingPhase } from './types';
 import { audioEngine, type DeviceError } from '../audio/AudioEngine';
 
@@ -43,6 +47,7 @@ interface SamplerState {
   setSettings: (settings: SettingsFile) => void;
   setPrimaryOutputDeviceId: (id: string | null) => Promise<void>;
   setMonitorOutputDeviceId: (id: string | null) => Promise<void>;
+  setRecordingSource: (source: RecordingSource) => Promise<void>;
   setDeviceError: (err: DeviceError | null) => void;
 }
 
@@ -162,6 +167,13 @@ export const useSampler = create<SamplerState>((set, get) => ({
     set({ settings: next });
     audioEngine.armUserGesture();
     audioEngine.setMonitorOutput(next.monitorOutputDeviceId);
+    await persistSettings(next);
+  },
+  setRecordingSource: async (source) => {
+    const prev = get().settings;
+    if (prev.recordingSource === source) return;
+    const next: SettingsFile = { ...prev, recordingSource: source };
+    set({ settings: next });
     await persistSettings(next);
   },
   setDeviceError: (deviceError) => set({ deviceError })

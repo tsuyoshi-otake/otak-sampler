@@ -4,13 +4,29 @@ export interface RecorderHandle {
   getLevel: () => number;
 }
 
-export async function startLoopbackRecorder(audioContext: AudioContext): Promise<RecorderHandle> {
+export type RecordingSource = 'loopback' | 'mic';
+
+export async function startRecorder(
+  audioContext: AudioContext,
+  source: RecordingSource
+): Promise<RecorderHandle> {
+  const audioStream =
+    source === 'mic' ? await openMicStream() : await openLoopbackStream();
+  return runRecorder(audioContext, audioStream);
+}
+
+export async function startLoopbackRecorder(
+  audioContext: AudioContext
+): Promise<RecorderHandle> {
+  return startRecorder(audioContext, 'loopback');
+}
+
+async function openLoopbackStream(): Promise<MediaStream> {
   const stream = await navigator.mediaDevices.getDisplayMedia({
     audio: true,
     video: true
   });
 
-  // Drop video; we only want loopback audio.
   for (const track of stream.getVideoTracks()) {
     stream.removeTrack(track);
     track.stop();
@@ -24,8 +40,32 @@ export async function startLoopbackRecorder(audioContext: AudioContext): Promise
       'NotFoundError'
     );
   }
+  return new MediaStream(audioTracks);
+}
 
-  const audioStream = new MediaStream(audioTracks);
+async function openMicStream(): Promise<MediaStream> {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false
+    },
+    video: false
+  });
+  if (stream.getAudioTracks().length === 0) {
+    stream.getTracks().forEach((t) => t.stop());
+    throw new DOMException(
+      'No microphone audio track returned by getUserMedia.',
+      'NotFoundError'
+    );
+  }
+  return stream;
+}
+
+function runRecorder(
+  audioContext: AudioContext,
+  audioStream: MediaStream
+): RecorderHandle {
   const sourceNode = audioContext.createMediaStreamSource(audioStream);
   const analyser = audioContext.createAnalyser();
   analyser.fftSize = 1024;

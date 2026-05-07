@@ -17,6 +17,7 @@ export function RecordButton() {
 
   const looperRecordingSlot = useSampler((s) => s.looperRecordingSlot);
   const looperBusy = looperRecordingSlot !== null;
+  const recordingSource = useSampler((s) => s.settings.recordingSource);
 
   const handleRef = useRef<RecorderHandle | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -41,15 +42,15 @@ export function RecordButton() {
     }
     setRecording('arming');
     try {
-      const handle = await audioEngine.record();
+      const handle = await audioEngine.record(recordingSource);
       handleRef.current = handle;
       setRecording('recording');
     } catch (err) {
-      console.error('Loopback recording failed', err);
+      console.error('Recording failed', err);
       setRecording('idle');
-      window.alert(describeLoopbackError(err, '録音'));
+      window.alert(describeLoopbackError(err, '録音', recordingSource));
     }
-  }, [recording, looperBusy, selectedPad, selectedPadId, setRecording]);
+  }, [recording, looperBusy, selectedPad, selectedPadId, setRecording, recordingSource]);
 
   const stop = useCallback(async (): Promise<void> => {
     const handle = handleRef.current;
@@ -102,8 +103,36 @@ export function RecordButton() {
         ? '...'
         : '● Record';
 
+  const setRecordingSource = useSampler((s) => s.setRecordingSource);
+
   return (
     <div className="flex items-center gap-3">
+      <div className="flex items-center rounded-md border border-zinc-700 overflow-hidden text-xs">
+        <button
+          onClick={() => void setRecordingSource('loopback')}
+          disabled={recording !== 'idle'}
+          className={`px-2 py-1 transition-colors ${
+            recordingSource === 'loopback'
+              ? 'bg-zinc-700 text-zinc-100'
+              : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800'
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
+          title="PC で再生中の音声を録音"
+        >
+          🖥 Loopback
+        </button>
+        <button
+          onClick={() => void setRecordingSource('mic')}
+          disabled={recording !== 'idle'}
+          className={`px-2 py-1 transition-colors ${
+            recordingSource === 'mic'
+              ? 'bg-zinc-700 text-zinc-100'
+              : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800'
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
+          title="マイクから録音"
+        >
+          🎤 Mic
+        </button>
+      </div>
       <button
         onClick={onClick}
         className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${

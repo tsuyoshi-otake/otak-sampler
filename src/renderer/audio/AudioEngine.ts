@@ -1,4 +1,4 @@
-import { startLoopbackRecorder, type RecorderHandle } from './recorder';
+import { startRecorder, type RecorderHandle, type RecordingSource } from './recorder';
 
 const TARGET_SAMPLE_RATE = 48000;
 
@@ -188,9 +188,9 @@ export class AudioEngine {
     };
   }
 
-  async record(): Promise<RecorderHandle> {
+  async record(source: RecordingSource = 'loopback'): Promise<RecorderHandle> {
     this.armUserGesture();
-    return startLoopbackRecorder(this.context());
+    return startRecorder(this.context(), source);
   }
 
   async decode(arrayBuffer: ArrayBuffer): Promise<AudioBuffer> {

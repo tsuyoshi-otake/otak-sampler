@@ -26,6 +26,7 @@ export function LooperSlot({ slot }: LooperSlotProps) {
   const padRecording = useSampler((s) => s.recording);
   const pads = useSampler((s) => s.bank.pads);
   const padLoaded = useSampler((s) => s.loadedPadIds);
+  const recordingSource = useSampler((s) => s.settings.recordingSource);
 
   const isThisRecording = recordingSlot === slot.id;
   const otherBusy = (recordingSlot !== null && recordingSlot !== slot.id) || padRecording !== 'idle';
@@ -63,14 +64,22 @@ export function LooperSlot({ slot }: LooperSlotProps) {
     }
     setLooperRecordingSlot(slot.id);
     try {
-      const handle = await audioEngine.record();
+      const handle = await audioEngine.record(recordingSource);
       handleRef.current = handle;
     } catch (err) {
       console.error('Loop recording failed to start', err);
       setLooperRecordingSlot(null);
-      window.alert(describeLoopbackError(err, 'ループ録音'));
+      window.alert(describeLoopbackError(err, 'ループ録音', recordingSource));
     }
-  }, [otherBusy, isThisRecording, slot.id, slot.name, slot.samplePath, setLooperRecordingSlot]);
+  }, [
+    otherBusy,
+    isThisRecording,
+    slot.id,
+    slot.name,
+    slot.samplePath,
+    setLooperRecordingSlot,
+    recordingSource
+  ]);
 
   const stopRec = useCallback(async (): Promise<void> => {
     const handle = handleRef.current;
