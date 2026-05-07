@@ -141,6 +141,18 @@ export function Toolbar() {
         >
           Import
         </button>
+        <button
+          onClick={() => void window.sampler.updater.check()}
+          title="Check for updates"
+          className="px-3 py-1.5 rounded text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center gap-1"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="23 4 23 10 17 10" />
+            <polyline points="1 20 1 14 7 14" />
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+          </svg>
+          Updates
+        </button>
         <div className="relative">
           <button
             onClick={() => setAboutMenuOpen((v) => !v)}

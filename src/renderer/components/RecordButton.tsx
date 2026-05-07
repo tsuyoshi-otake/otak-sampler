@@ -3,6 +3,7 @@ import { useSampler } from '../state/store';
 import { audioEngine } from '../audio/AudioEngine';
 import type { RecorderHandle } from '../audio/recorder';
 import { encodeWav } from '../audio/encodeWav';
+import { describeLoopbackError } from '../audio/loopbackError';
 import { LevelMeter } from './LevelMeter';
 
 export function RecordButton() {
@@ -46,7 +47,7 @@ export function RecordButton() {
     } catch (err) {
       console.error('Loopback recording failed', err);
       setRecording('idle');
-      window.alert('録音を開始できませんでした。ループバックを許可してください。');
+      window.alert(describeLoopbackError(err, '録音'));
     }
   }, [recording, looperBusy, selectedPad, selectedPadId, setRecording]);
 

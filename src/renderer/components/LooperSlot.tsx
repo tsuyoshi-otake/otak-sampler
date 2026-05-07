@@ -3,6 +3,7 @@ import { useSampler } from '../state/store';
 import { audioEngine } from '../audio/AudioEngine';
 import type { RecorderHandle } from '../audio/recorder';
 import { encodeWav } from '../audio/encodeWav';
+import { describeLoopbackError } from '../audio/loopbackError';
 import type { LooperSlotConfig } from '../../shared/bank-schema';
 
 interface LooperSlotProps {
@@ -67,7 +68,7 @@ export function LooperSlot({ slot }: LooperSlotProps) {
     } catch (err) {
       console.error('Loop recording failed to start', err);
       setLooperRecordingSlot(null);
-      window.alert('ループ録音を開始できませんでした。');
+      window.alert(describeLoopbackError(err, 'ループ録音'));
     }
   }, [otherBusy, isThisRecording, slot.id, slot.name, slot.samplePath, setLooperRecordingSlot]);
 

@@ -1,6 +1,6 @@
 {
   "name": "otak-sampler",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "Desktop sampler that records system audio loopback to 12 keyboard-triggered pads with inline waveform editing, a 4-slot looper, a diatonic piano mode, and per-output-device routing.",
   "private": true,
   "author": "tsuyoshi-otake",
