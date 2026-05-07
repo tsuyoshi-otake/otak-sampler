@@ -19,7 +19,10 @@ export async function startLoopbackRecorder(audioContext: AudioContext): Promise
   const audioTracks = stream.getAudioTracks();
   if (audioTracks.length === 0) {
     stream.getTracks().forEach((t) => t.stop());
-    throw new Error('No system audio track returned. Check loopback permission.');
+    throw new DOMException(
+      'No system audio track returned by getDisplayMedia.',
+      'NotFoundError'
+    );
   }
 
   const audioStream = new MediaStream(audioTracks);
