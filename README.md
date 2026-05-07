@@ -1,10 +1,11 @@
 # otak-sampler
 
-A Windows desktop sampler with a 12-pad grid, a 4-slot looper, a piano mode for pitched playback of any pad, AI vocal separation, and per-output-device routing for meeting use. Records whatever is currently playing on your PC.
+A Windows desktop sampler with a 12-pad grid, a 4-slot looper, a piano mode for pitched playback of any pad, AI vocal separation, and per-output-device routing for meeting use. Records whatever is currently playing on your PC, or directly from your microphone.
 
 ## Features
 
-- **System audio loopback recording** via `setDisplayMediaRequestHandler({ audio: 'loopback' })` — capture anything Windows is playing without a virtual cable.
+- **System audio loopback recording** via `setDisplayMediaRequestHandler({ audio: 'loopback' })` — capture anything Windows is playing without a virtual cable. The screen-share gate is auto-accepted by main, so there's no system picker prompt on Record.
+- **Microphone recording** as the alternative source — toggle 🖥 *Loopback* / 🎤 *Mic* next to the Record button. Mic input runs raw (no echo-cancellation / noise-suppression / AGC) so the captured signal is clean for sampling.
 - **12 pads in a 4 × 3 grid**, default keymap `1 2 3 4 / Q W E R / A S D F`. Press any key while the window has focus to play. Polyphonic — multiple pads can play at once.
 - **Inline waveform editor** with trim region (drag handles), fade-in / fade-out, and gain. Live cursor while previewing.
 - **AI vocal separation** powered by [UVR-MDX-NET-Voc_FT](https://huggingface.co/Blane187/all_public_uvr_models/resolve/main/UVR-MDX-NET-Voc_FT.onnx) running locally via [onnxruntime-web](https://onnxruntime.ai/docs/tutorials/web/). Two buttons in the editor:
@@ -50,14 +51,15 @@ npm run package
 ## Usage
 
 1. **Pick a pad** by clicking it (the selected pad has a green border).
-2. **Record** by clicking ● *Record* in the toolbar — Electron will request screen-share permission once; this is the loopback gate, accept it. Whatever is playing on your PC starts being captured.
-3. **Stop** with ■ *Stop*. The clip lands on the selected pad.
-4. **Play** by clicking the pad, or press its keyboard letter.
-5. **Edit** with double-click on the pad. Drag the green region's handles to trim, slide *Fade in / Fade out / Gain*, optionally hit **Vocal isolate** / **Vocal cut**, then **Save**.
-6. **Chop** a longer recording: toolbar → *Chop*. Record or **Load WAV…**, drag on the waveform to add slices (or **Auto Equal × N**), click any pad number on a slice's row to commit it.
-7. **Loop** a phrase: open the *Looper* panel under the grid. On any of the 4 slots, click **Load from pad** to copy a pad's buffer or **● Rec** to record fresh loopback audio. **▶ Play** on a slot starts continuous looping; pads keep working on top.
-8. **Play pitched** with *Piano* in the toolbar. Pick a source pad, set the root note, then walk the white keys diatonically with the home row `A S D F G H J K L ; ' \\` and continue on the top row `Q W E R T Y U I O P [ ]`. Mouse-click any black key for a sharp. `Z` / `X` shift octaves. The mapping uses physical key positions, so JIS and US layouts both work.
-9. **Share** a kit: toolbar → *Export* → save the `.sampler` file. On another machine, *Import* the same file (loops included).
+2. **Pick a source** — toggle 🖥 *Loopback* (default) or 🎤 *Mic* next to the Record button.
+3. **Record** by clicking ● *Record* in the toolbar. For Mic, Windows will ask for microphone permission once. For Loopback, the screen-share gate is auto-accepted and there is no prompt; recording starts immediately. (If Mic was previously denied, re-enable it from Windows Settings → Privacy → Microphone.)
+4. **Stop** with ■ *Stop*. The clip lands on the selected pad.
+5. **Play** by clicking the pad, or press its keyboard letter.
+6. **Edit** with double-click on the pad. Drag the green region's handles to trim, slide *Fade in / Fade out / Gain*, optionally hit **Vocal isolate** / **Vocal cut**, then **Save**.
+7. **Chop** a longer recording: toolbar → *Chop*. Record or **Load WAV…**, drag on the waveform to add slices (or **Auto Equal × N**), click any pad number on a slice's row to commit it.
+8. **Loop** a phrase: open the *Looper* panel under the grid. On any of the 4 slots, click **Load from pad** to copy a pad's buffer or **● Rec** to record fresh loopback audio. **▶ Play** on a slot starts continuous looping; pads keep working on top.
+9. **Play pitched** with *Piano* in the toolbar. Pick a source pad, set the root note, then walk the white keys diatonically with the home row `A S D F G H J K L ; ' \\` and continue on the top row `Q W E R T Y U I O P [ ]`. Mouse-click any black key for a sharp. `Z` / `X` shift octaves. The mapping uses physical key positions, so JIS and US layouts both work.
+10. **Share** a kit: toolbar → *Export* → save the `.sampler` file. On another machine, *Import* the same file (loops included).
 
 ## Use otak-sampler in meetings
 
@@ -81,32 +83,35 @@ Notes:
 ```
 src/
   main/                 Electron main process
-    index.ts            Loopback handler (registered before window creation), IPC bootstrap
-    window.ts           BrowserWindow setup
+    index.ts            Loopback handler + app-ort:// privileged protocol (both registered before window creation), IPC bootstrap
+    window.ts           BrowserWindow setup (Electron default menu hidden via setApplicationMenu(null) + setMenuBarVisibility(false))
     ipc/
       bank.ts           bank.json read/write (atomic tmp + rename, normalizes legacy banks)
       samples.ts        WAV save / load / delete (shared by pads and looper slots)
       models.ts         Model fetch from Hugging Face + userData cache + progress events
       bankio.ts         Bank export / import as .sampler ZIP (jszip, packs pads + loopers)
-      settings.ts       settings.json read/write (output device choices)
+      settings.ts       settings.json read/write (output device choices, recording source)
       app.ts            Version, openExternal (gated to github.com), electron-updater wiring
   preload/
     index.ts            contextBridge → window.sampler.{ samples, bank, models, bankIo, settings, app, updater }
   renderer/             React app
+    index.html          CSP includes 'wasm-unsafe-eval' + app-ort: scheme so ORT can compile
     audio/
-      AudioEngine.ts        Shared AudioContext, polyphonic playback
-      recorder.ts           MediaRecorder (audio/webm; codecs=opus) + AnalyserNode level meter
+      AudioEngine.ts        Shared AudioContext, polyphonic playback, masterGain → sink routing, looper voices
+      recorder.ts           startRecorder(ctx, 'loopback' | 'mic'); MediaRecorder (audio/webm; codecs=opus) + AnalyserNode level meter
+      loopbackError.ts      Error → user-facing hint mapping (Loopback vs Mic, per Windows DOMException name)
       encodeWav.ts          AudioBuffer → 16-bit PCM WAV
       offlineRender.ts      Trim + fade + gain via OfflineAudioContext
       dsp/
         fft.ts              Arbitrary-size DFT via Bluestein layered on fft.js
         stft.ts             Hann periodic, librosa-compatible center=True STFT/iSTFT
         resample.ts         48k ↔ 44.1k via OfflineAudioContext
-        vocalSeparator.ts   UVR-MDX-NET-Voc_FT pipeline
+        vocalSeparator.ts   UVR-MDX-NET-Voc_FT pipeline; ORT WASM loaded via app-ort:// → blob: URLs
     components/
-      Toolbar.tsx              Record / Edit / Clear / Stop all / Chop / Piano / Output device / Export / Import / About
+      Toolbar.tsx              Record / Edit / Clear / Stop all / Chop / Piano / Output device / Export / Import / Updates / About
       PadGrid.tsx, Pad.tsx
-      RecordButton.tsx, LevelMeter.tsx
+      RecordButton.tsx         🖥 Loopback / 🎤 Mic toggle + ● Record / ■ Stop + LevelMeter
+      LevelMeter.tsx
       WaveformEditor.tsx       wavesurfer + Regions + Vocal AI + preview cursor
       ChopMode.tsx             Multi-region slicing + per-pad assignment
       LooperPanel.tsx          Docked 4-slot panel
@@ -114,14 +119,14 @@ src/
       PianoMode.tsx            Pitch-shifted polyphonic playback (event.code based)
       OutputDeviceMenu.tsx     Primary / Monitor sink picker
       AboutMenu.tsx            Version + Check for updates + Open releases page
-      UpdateBanner.tsx         electron-updater status banner
+      UpdateBanner.tsx         electron-updater status banner (checking / available / downloading / ready / error)
       KeyboardListener.tsx
     state/
       store.ts                 Zustand
       hydrate.ts               Replace bank + reload all sample buffers (pads + loopers)
-  shared/                      IPC contract types + bank schema (PAD_COUNT=12, LOOPER_SLOT_COUNT=4)
+  shared/                      IPC contract types + bank schema (PAD_COUNT=12, LOOPER_SLOT_COUNT=4) + settings schema (recordingSource)
 tests/audio/                Jest tests for FFT / STFT / encodeWav / offlineRender
-scripts/copy-ort-wasm.mjs   Pre-bundle copy of ORT WASM into renderer/public/ort/
+scripts/copy-ort-wasm.mjs   Pre-bundle copy of ORT WASM into renderer/public/ort/ (also unpacked from asar at install time)
 ```
 
 ## Scripts
@@ -145,10 +150,10 @@ The toolbar ⓘ button gives manual access: a "Check for updates" command and an
 - **Windows x64 only** in v1. Mac/Linux out of scope until I have something to test against.
 - **Recordings use Opus** (`audio/webm; codecs=opus`) — lossy. AudioWorklet-based PCM recording is on the v1.1 list.
 - **Keyboard triggers are window-local**, not global hotkeys. Pads fire only when the otak-sampler window has focus and an editable element doesn't. Pad keymap is suspended while Piano mode is open.
-- **Pad recording and looper recording are mutually exclusive.** One MediaRecorder at a time.
 - **Piano pitch shift uses `playbackRate`** — same as a tape sped up / slowed down. Quality is good within ±1 octave; further out can sound thin or ringy. Sustained tones will shift formants. Best for one-shots and percussive samples.
 - **Looper does not tempo-sync.** Each slot loops independently at its own length. Tap tempo / quantization is on the v1.1 list.
-- **Vocal separation runs in WASM CPU**, single-threaded. Expect roughly 5–15 s of inference for a 5 s clip. Quality is best on commercial-style mixes; weaker on speech, mono sources, or sparse mixes. The model is fixed-format: 44.1 kHz stereo, internally chunked as 5.93 s segments.
+- **Vocal separation runs in WASM CPU**, single-threaded, on the renderer main thread (ORT proxy worker is disabled because module workers don't load from packaged Electron). Expect roughly 5–15 s of inference for a 5 s clip and a brief UI freeze during that window. Quality is best on commercial-style mixes; weaker on speech, mono sources, or sparse mixes. The model is fixed-format: 44.1 kHz stereo, internally chunked as 5.93 s segments.
+- **Recording sources are mutually exclusive with the looper.** Loopback or Mic at any moment, and pad recording vs looper recording cannot run simultaneously — there is one MediaRecorder.
 - **Bank import overwrites in-memory state** but doesn't delete previous sample WAVs from disk — they linger in `samples/` until you clear the pad.
 - **Installer is unsigned.** Code signing infrastructure is wired in `electron-builder.yml` via the `CSC_LINK` / `CSC_KEY_PASSWORD` env-var convention, but no certificate is bundled.
 
