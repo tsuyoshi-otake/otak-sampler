@@ -2,8 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <!-- Dev allows Vite HMR over ws; production builds inject a stricter CSP via the main process. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data: blob: ws: wss: http://localhost:* http://127.0.0.1:*;" />
+    <!--
+      Dev allows Vite HMR over ws; 'wasm-unsafe-eval' lets ORT compile its
+      WebAssembly module (Chromium blocks WASM under default-src otherwise).
+      'app-ort:' is the custom protocol main registers for serving the ORT
+      runtime files.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' data: blob: ws: wss: app-ort: http://localhost:* http://127.0.0.1:*;"
+    />
     <title>otak-sampler</title>
   </head>
   <body class="bg-zinc-950 text-zinc-100">
