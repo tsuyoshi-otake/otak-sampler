@@ -4,7 +4,7 @@ This file is read by Claude Code when working in this repo. Keep it short and hi
 
 ## What this project is
 
-Windows desktop sampler built on Electron 32 + React 19 + TypeScript (strict). Records Windows loopback audio to 12 keyboard-triggered pads with waveform editing, ONNX-based vocal separation, a chop-and-assign workflow, a 4-slot looper, a polyphonic piano mode (pitch-shifted single-pad), and per-output-device routing for meeting use.
+Windows desktop sampler built on Electron 32 + React 19 + TypeScript (strict). Records Windows loopback audio to 12 keyboard-triggered pads with waveform editing, ONNX-based vocal separation, a chop-and-assign workflow, a 4-slot looper, a polyphonic piano mode (pitch-shifted single-pad), per-output-device routing for meeting use, and electron-updater self-update from a private GitHub release feed.
 
 ## Daily commands
 
@@ -52,6 +52,10 @@ scripts/copy-ort-wasm.mjs  Pre-build copy of ORT WASM into renderer public/ort/
 - **Looper recording reuses `samples:save` with a padId offset.** Loop slot N saves as `padId = 100 + N` so filenames stay collision-free without adding a new IPC. The bank's `loopers[]` array stores the absolute path.
 - **Bank schema is forward-compatible.** New optional fields (e.g. `loopers`) are normalized in `src/main/ipc/bank.ts` on read; the version stays at 1 until a real breaking change.
 - **`stopAll()` stops loops too.** Toolbar Stop all kills both pad voices and looper voices. The Looper panel has its own "Stop loops" button if you only want to halt loops.
+- **electron-updater needs `GH_TOKEN` because the repo is private.** `publish.provider: github` is configured in `electron-builder.yml` so the feed URL is embedded in the binary, but the runtime fetch is authenticated. The token is **not** baked into the binary — it's read from `process.env.GH_TOKEN` on the user's machine (set via `[Environment]::SetEnvironmentVariable('GH_TOKEN', '...', 'User')`). If the repo ever goes public, the env var becomes optional. Don't bake the token in — even a fine-grained read-only PAT is leaked if the binary is shared.
+- **`autoDownload = false` is intentional.** The renderer's UpdateBanner exposes the four states (available / downloading / ready / error) and lets the user opt in. Auto-downloading would surprise the user with bandwidth use during active sampling.
+- **`shell.openExternal` is gated to github.com in main.** `src/main/ipc/app.ts` rejects any other URL prefix. Don't widen this without thinking about phishing surface — the main process can navigate the user anywhere.
+- **Installer auto-uninstalls the old version on upgrade.** electron-builder NSIS detects the existing install via `HKCU\Software\<appId>` and silently runs the prior uninstaller before installing the new build. `deleteAppDataOnUninstall: false` keeps user data (`%APPDATA%\otak-sampler`) intact across the swap. Don't change this without thinking about migration.
 
 ## Persistence layout
 

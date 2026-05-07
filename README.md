@@ -16,6 +16,7 @@ A Windows desktop sampler with a 12-pad grid, a 4-slot looper, a piano mode for 
 - **Piano mode** — modal that maps any pad's sample across the keyboard diatonically. Home row `A S D F G H J K L ; ' \\` walks 12 consecutive white keys starting at the root; top row `Q W E R T Y U I O P [ ]` continues with the next 12 — 24 white keys total (~3.4 octaves). Click black keys with the mouse for sharps. Polyphonic, per-key release. Z / X shift octaves.
 - **Output device routing** — choose any audio output for primary playback (e.g. a virtual cable like VB-Cable) plus an optional monitor output. Lets you use otak-sampler as your meeting "mic" while still hearing yourself.
 - **Bank export / import** as a single `.sampler` file (ZIP containing `bank.json`, pad WAVs, and looper WAVs) — share an entire kit in one drag-and-drop.
+- **In-app updates** — toolbar ⓘ button shows the current version, a "Check for updates" command, and a shortcut to the GitHub releases page. When a new version is detected, a banner offers to download it and restart into the new build (electron-updater).
 - **Persistent across launches** — pads, looper slots, samples, keymap, and output device choice live in `%APPDATA%/otak-sampler/`.
 
 ## Stack
@@ -26,7 +27,9 @@ Electron 32 · React 19 · TypeScript (strict) · Vite (via electron-vite) · Zu
 
 ### Pre-built installer (Windows x64)
 
-Download `otak-sampler-<version>-setup.exe` from the latest release and run it. The installer is unsigned, so SmartScreen will warn on first launch — click **More info → Run anyway**.
+Download `otak-sampler-<version>-setup.exe` from the latest release and run it. The installer is unsigned, so SmartScreen will warn on first launch — click **More info → Run anyway**. The wizard creates desktop and Start Menu shortcuts.
+
+Reinstalling a new version on top of an existing one auto-uninstalls the old one and preserves your user data (`bank.json`, sample WAVs, looper WAVs, downloaded ONNX model, output device settings) under `%APPDATA%\otak-sampler`.
 
 ### Build from source
 
@@ -86,8 +89,9 @@ src/
       models.ts         Model fetch from Hugging Face + userData cache + progress events
       bankio.ts         Bank export / import as .sampler ZIP (jszip, packs pads + loopers)
       settings.ts       settings.json read/write (output device choices)
+      app.ts            Version, openExternal (gated to github.com), electron-updater wiring
   preload/
-    index.ts            contextBridge → window.sampler.{ samples, bank, models, bankIo, settings }
+    index.ts            contextBridge → window.sampler.{ samples, bank, models, bankIo, settings, app, updater }
   renderer/             React app
     audio/
       AudioEngine.ts        Shared AudioContext, polyphonic playback
@@ -100,7 +104,7 @@ src/
         resample.ts         48k ↔ 44.1k via OfflineAudioContext
         vocalSeparator.ts   UVR-MDX-NET-Voc_FT pipeline
     components/
-      Toolbar.tsx              Record / Edit / Clear / Stop all / Chop / Piano / Output device / Export / Import
+      Toolbar.tsx              Record / Edit / Clear / Stop all / Chop / Piano / Output device / Export / Import / About
       PadGrid.tsx, Pad.tsx
       RecordButton.tsx, LevelMeter.tsx
       WaveformEditor.tsx       wavesurfer + Regions + Vocal AI + preview cursor
@@ -109,6 +113,8 @@ src/
       LooperSlot.tsx           Per-slot Play / Stop / Rec / Load-from-pad / Gain
       PianoMode.tsx            Pitch-shifted polyphonic playback (event.code based)
       OutputDeviceMenu.tsx     Primary / Monitor sink picker
+      AboutMenu.tsx            Version + Check for updates + Open releases page
+      UpdateBanner.tsx         electron-updater status banner
       KeyboardListener.tsx
     state/
       store.ts                 Zustand
@@ -127,6 +133,18 @@ scripts/copy-ort-wasm.mjs   Pre-bundle copy of ORT WASM into renderer/public/ort
 | `npm test` | Jest unit tests. |
 | `npm run build` | Production bundle to `out/`. |
 | `npm run package` | Build + NSIS installer in `dist/` (Windows x64). |
+
+## Auto-updates
+
+The app checks the GitHub releases feed embedded in the binary on launch. When a new release is available, a banner at the top of the window lets you download it and restart in place.
+
+This repository is **private**, so electron-updater needs a GitHub token to fetch releases. Set `GH_TOKEN` to a fine-grained PAT scoped to `otak-sampler` (`Contents: Read-only`) in your Windows user environment variables before launching the app:
+
+```powershell
+[Environment]::SetEnvironmentVariable('GH_TOKEN', 'github_pat_xxxxx', 'User')
+```
+
+Without a token, the silent check fails quietly. The toolbar ⓘ button still works as a manual fallback — click **Open releases page** to grab the latest installer in your browser.
 
 ## Notes and limitations
 
