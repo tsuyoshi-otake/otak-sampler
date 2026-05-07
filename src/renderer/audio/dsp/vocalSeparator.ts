@@ -82,7 +82,11 @@ export async function ensureSession(
     onProgress?.({ phase: 'load' });
 
     const blobs = await ensureOrtBlobs();
-    ort.env.wasm.proxy = true;
+    // proxy: false avoids `new Worker(scriptSrc, { type: 'module' })` against
+    // a file:// URL inside asar, which Chromium rejects in packaged Electron.
+    // Inference runs in the main renderer thread instead — the existing
+    // progress UI already covers the 5-15s freeze.
+    ort.env.wasm.proxy = false;
     // Per-file blob URLs let ORT's ESM dynamic import + WebAssembly loader
     // bypass the file:// / asar / custom-protocol pitfalls entirely.
     ort.env.wasm.wasmPaths = {
@@ -92,15 +96,35 @@ export async function ensureSession(
     ort.env.wasm.numThreads = 1;
     ort.env.wasm.simd = true;
 
-    session = await ort.InferenceSession.create(bytes, {
-      executionProviders: ['wasm']
-    });
+    try {
+      session = await ort.InferenceSession.create(bytes, {
+        executionProviders: ['wasm']
+      });
+    } catch (e) {
+      throw enrichOrtError(e);
+    }
     inputName = session.inputNames[0] ?? null;
     outputName = session.outputNames[0] ?? null;
     if (!inputName || !outputName) throw new Error('Model has no I/O bindings');
   } finally {
     off();
   }
+}
+
+// ORT wraps script-load failures as `[object Event]` strings, which loses
+// every actionable detail. Pull the Event apart — type, filename, message,
+// target.src — and rebuild a real Error.
+function enrichOrtError(e: unknown): Error {
+  if (e instanceof Error) return e;
+  const ev = e as Partial<ErrorEvent> & { target?: HTMLScriptElement };
+  const parts: string[] = [];
+  if (ev.type) parts.push(`type=${ev.type}`);
+  if (ev.message) parts.push(`message=${ev.message}`);
+  if (ev.filename) parts.push(`filename=${ev.filename}`);
+  if (ev.lineno !== undefined) parts.push(`line=${ev.lineno}`);
+  if (ev.target?.src) parts.push(`src=${ev.target.src}`);
+  const detail = parts.length > 0 ? parts.join(' | ') : String(e);
+  return new Error(`ORT init Event: ${detail}`);
 }
 
 export async function separateVocals(
