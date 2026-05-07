@@ -12,7 +12,7 @@ import { join, basename, extname } from 'node:path';
 import { Buffer } from 'node:buffer';
 import JSZip from 'jszip';
 import { IPC } from '../../shared/ipc-contract';
-import { type BankFile, defaultBank } from '../../shared/bank-schema';
+import { type BankFile, defaultBank, defaultLoopers } from '../../shared/bank-schema';
 import { resolveBankFile, resolveDataRoot, resolveSamplesDir } from '../paths';
 
 export function registerBankIoIpc(): void {
@@ -31,21 +31,31 @@ export function registerBankIoIpc(): void {
     const bank: BankFile = bankJson ? (JSON.parse(bankJson) as BankFile) : defaultBank();
 
     const zip = new JSZip();
+    const incomingLoopers = bank.loopers ?? defaultLoopers();
+
+    const packEntry = async <T extends { samplePath: string | null }>(
+      entry: T
+    ): Promise<T> => {
+      if (!entry.samplePath) return { ...entry };
+      try {
+        const wav = await readFile(entry.samplePath);
+        const name = basename(entry.samplePath);
+        zip.file(`samples/${name}`, wav);
+        return { ...entry, samplePath: `samples/${name}` };
+      } catch {
+        return { ...entry, samplePath: null };
+      }
+    };
+
+    const [packedPads, packedLoopers] = await Promise.all([
+      Promise.all(bank.pads.map(packEntry)),
+      Promise.all(incomingLoopers.map(packEntry))
+    ]);
+
     const exportBank: BankFile = {
       ...bank,
-      pads: await Promise.all(
-        bank.pads.map(async (pad) => {
-          if (!pad.samplePath) return { ...pad };
-          try {
-            const wav = await readFile(pad.samplePath);
-            const name = basename(pad.samplePath);
-            zip.file(`samples/${name}`, wav);
-            return { ...pad, samplePath: `samples/${name}` };
-          } catch {
-            return { ...pad, samplePath: null };
-          }
-        })
-      )
+      pads: packedPads,
+      loopers: packedLoopers
     };
     zip.file('bank.json', JSON.stringify(exportBank, null, 2));
 
@@ -79,21 +89,33 @@ export function registerBankIoIpc(): void {
     await mkdir(samplesDir, { recursive: true });
 
     const ts = Date.now();
-    const restoredPads = await Promise.all(
-      incoming.pads.map(async (pad, i) => {
-        if (!pad.samplePath) return { ...pad, samplePath: null };
-        const entry = zip.file(pad.samplePath);
-        if (!entry) return { ...pad, samplePath: null };
-        const wav = await entry.async('nodebuffer');
-        const ext = extname(pad.samplePath) || '.wav';
-        const fileName = `${pad.id}-${ts}-${i}${ext}`;
-        const outPath = join(samplesDir, fileName);
-        await writeFile(outPath, wav);
-        return { ...pad, samplePath: outPath };
-      })
-    );
+    const incomingLoopers = incoming.loopers ?? defaultLoopers();
+    const restoreEntry = async <T extends { id: number; samplePath: string | null }>(
+      entry: T,
+      i: number,
+      idOffset: number
+    ): Promise<T> => {
+      if (!entry.samplePath) return { ...entry, samplePath: null };
+      const zipEntry = zip.file(entry.samplePath);
+      if (!zipEntry) return { ...entry, samplePath: null };
+      const wav = await zipEntry.async('nodebuffer');
+      const ext = extname(entry.samplePath) || '.wav';
+      const fileName = `${idOffset + entry.id}-${ts}-${i}${ext}`;
+      const outPath = join(samplesDir, fileName);
+      await writeFile(outPath, wav);
+      return { ...entry, samplePath: outPath };
+    };
 
-    const restored: BankFile = { ...incoming, pads: restoredPads };
+    const [restoredPads, restoredLoopers] = await Promise.all([
+      Promise.all(incoming.pads.map((pad, i) => restoreEntry(pad, i, 0))),
+      Promise.all(incomingLoopers.map((slot, i) => restoreEntry(slot, i, 100)))
+    ]);
+
+    const restored: BankFile = {
+      ...incoming,
+      loopers: restoredLoopers,
+      pads: restoredPads
+    };
     const bankPath = join(dataRoot, 'bank.json');
     const tmp = `${bankPath}.tmp`;
     await writeFile(tmp, JSON.stringify(restored, null, 2), 'utf-8');

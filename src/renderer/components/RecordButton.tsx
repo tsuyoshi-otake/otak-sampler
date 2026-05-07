@@ -14,6 +14,9 @@ export function RecordButton() {
   const markPadLoaded = useSampler((s) => s.markPadLoaded);
   const bank = useSampler((s) => s.bank);
 
+  const looperRecordingSlot = useSampler((s) => s.looperRecordingSlot);
+  const looperBusy = looperRecordingSlot !== null;
+
   const handleRef = useRef<RecorderHandle | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const startedAt = useRef(0);
@@ -29,6 +32,7 @@ export function RecordButton() {
 
   const start = useCallback(async (): Promise<void> => {
     if (recording !== 'idle') return;
+    if (looperBusy) return;
     if (!selectedPad) return;
     if (selectedPad.samplePath) {
       const ok = window.confirm(`Pad ${selectedPadId + 1} に既存サンプルを上書きしますか?`);
@@ -44,7 +48,7 @@ export function RecordButton() {
       setRecording('idle');
       window.alert('録音を開始できませんでした。ループバックを許可してください。');
     }
-  }, [recording, selectedPad, selectedPadId, setRecording]);
+  }, [recording, looperBusy, selectedPad, selectedPadId, setRecording]);
 
   const stop = useCallback(async (): Promise<void> => {
     const handle = handleRef.current;
@@ -105,8 +109,8 @@ export function RecordButton() {
           recording === 'recording'
             ? 'bg-red-500 hover:bg-red-400 text-white'
             : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-100'
-        }`}
-        disabled={recording === 'arming'}
+        } disabled:opacity-40 disabled:cursor-not-allowed`}
+        disabled={recording === 'arming' || (looperBusy && recording === 'idle')}
       >
         {label}
       </button>

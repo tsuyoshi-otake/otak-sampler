@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron';
 import { readFile, writeFile, rename } from 'node:fs/promises';
 import { IPC } from '../../shared/ipc-contract';
-import { defaultBank, type BankFile } from '../../shared/bank-schema';
+import { defaultBank, defaultLoopers, type BankFile } from '../../shared/bank-schema';
 import { resolveBankFile } from '../paths';
 
 export function registerBankIpc(): void {
@@ -9,9 +9,15 @@ export function registerBankIpc(): void {
     const path = await resolveBankFile();
     try {
       const raw = await readFile(path, 'utf-8');
-      const parsed = JSON.parse(raw) as BankFile;
+      const parsed = JSON.parse(raw) as Partial<BankFile> & { version: number };
       if (parsed.version !== 1) return defaultBank();
-      return parsed;
+      const fallback = defaultBank();
+      return {
+        ...fallback,
+        ...parsed,
+        version: 1,
+        loopers: parsed.loopers ?? defaultLoopers()
+      } as BankFile;
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
         const fresh = defaultBank();

@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useSampler } from '../state/store';
 import { audioEngine } from '../audio/AudioEngine';
 import { RecordButton } from './RecordButton';
 import { hydrateBank } from '../state/hydrate';
+import { OutputDeviceMenu } from './OutputDeviceMenu';
 
 export function Toolbar() {
   const selectedPad = useSampler((s) => s.bank.pads[s.bank.selectedPadId]);
@@ -9,7 +11,10 @@ export function Toolbar() {
   const updatePad = useSampler((s) => s.updatePad);
   const openEditor = useSampler((s) => s.openEditor);
   const openChop = useSampler((s) => s.openChop);
+  const openPiano = useSampler((s) => s.openPiano);
   const markPadUnloaded = useSampler((s) => s.markPadUnloaded);
+  const deviceError = useSampler((s) => s.deviceError);
+  const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
 
   const onClear = async (): Promise<void> => {
     if (!selectedPad) return;
@@ -97,6 +102,30 @@ export function Toolbar() {
         >
           Chop
         </button>
+        <button
+          onClick={openPiano}
+          disabled={!canEdit}
+          className="px-3 py-1.5 rounded text-sm bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-500/40 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Piano
+        </button>
+        <span className="w-px h-5 bg-zinc-700 mx-1" />
+        <div className="relative">
+          <button
+            onClick={() => setDeviceMenuOpen((v) => !v)}
+            title="Output devices"
+            aria-label="Output devices"
+            className={`px-2 py-1.5 rounded text-sm bg-zinc-800 hover:bg-zinc-700 ${
+              deviceError ? 'text-rose-300' : 'text-zinc-300'
+            }`}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+          {deviceMenuOpen && <OutputDeviceMenu onClose={() => setDeviceMenuOpen(false)} />}
+        </div>
         <span className="w-px h-5 bg-zinc-700 mx-1" />
         <button
           onClick={() => void onExport()}

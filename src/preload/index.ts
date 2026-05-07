@@ -10,6 +10,7 @@ import {
   type ModelProgressEvent
 } from '../shared/ipc-contract';
 import type { BankFile } from '../shared/bank-schema';
+import type { SettingsFile } from '../shared/settings-schema';
 
 const api: SamplerApi = {
   samples: {
@@ -34,6 +35,10 @@ const api: SamplerApi = {
   bankIo: {
     export: () => ipcRenderer.invoke(IPC.bankExport),
     import: () => ipcRenderer.invoke(IPC.bankImport)
+  },
+  settings: {
+    read: () => ipcRenderer.invoke(IPC.settingsRead),
+    write: (settings: SettingsFile) => ipcRenderer.invoke(IPC.settingsWrite, settings)
   }
 };
 

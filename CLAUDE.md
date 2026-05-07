@@ -4,7 +4,7 @@ This file is read by Claude Code when working in this repo. Keep it short and hi
 
 ## What this project is
 
-Windows desktop sampler built on Electron 32 + React 19 + TypeScript (strict). Records Windows loopback audio to 12 keyboard-triggered pads with waveform editing, ONNX-based vocal separation, and a chop-and-assign workflow.
+Windows desktop sampler built on Electron 32 + React 19 + TypeScript (strict). Records Windows loopback audio to 12 keyboard-triggered pads with waveform editing, ONNX-based vocal separation, a chop-and-assign workflow, a 4-slot looper, a polyphonic piano mode (pitch-shifted single-pad), and per-output-device routing for meeting use.
 
 ## Daily commands
 
@@ -22,14 +22,14 @@ The user is on Windows / PowerShell. If shelling out to non-Bash, mind PowerShel
 
 ```
 src/main/                  Electron main; loopback handler in index.ts
-src/main/ipc/              bank, samples, models, bankio handlers
-src/preload/               contextBridge: window.sampler.{samples,bank,models,bankIo}
+src/main/ipc/              bank, samples, models, bankio, settings handlers
+src/preload/               contextBridge: window.sampler.{samples,bank,models,bankIo,settings}
 src/renderer/              React app
-src/renderer/audio/        AudioEngine, recorder, WAV encoder, OfflineAudioContext editor
+src/renderer/audio/        AudioEngine (masterGain + sink routing + looper + playNote), recorder, WAV encoder
 src/renderer/audio/dsp/    STFT/iSTFT, FFT (Bluestein), resample, vocalSeparator
-src/renderer/components/   Toolbar, PadGrid, Pad, WaveformEditor, ChopMode, etc.
-src/renderer/state/        Zustand store + hydrate helper
-src/shared/                IPC contract types + bank schema (PAD_COUNT=12)
+src/renderer/components/   Toolbar, PadGrid, Pad, WaveformEditor, ChopMode, LooperPanel, LooperSlot, PianoMode, OutputDeviceMenu, etc.
+src/renderer/state/        Zustand store + hydrate helper (loads pads + loopers + settings)
+src/shared/                IPC contract + bank schema (PAD_COUNT=12, LOOPER_SLOT_COUNT=4) + settings schema
 tests/audio/               Jest unit tests for DSP and WAV encoder
 scripts/copy-ort-wasm.mjs  Pre-build copy of ORT WASM into renderer public/ort/
 ```
@@ -45,17 +45,25 @@ scripts/copy-ort-wasm.mjs  Pre-build copy of ORT WASM into renderer public/ort/
 - **Chunking.** Each chunk is `chunk = (dim_t - 1) * hop = 261120` samples (5.93 s @ 44.1 kHz). Pad input by `trim = n_fft / 2 = 3072` zeros on each side, slide by `gen = chunk - 2 * trim = 254976`, drop `trim` samples from each side of every iSTFT result before concatenating.
 - **ORT WASM bundling.** The renderer Vite config uses the `onnxruntime-web-use-extern-wasm` resolve condition so the WASM file is NOT bundled into the JS chunk. Instead `scripts/copy-ort-wasm.mjs` (run via `predev` / `prebuild`) copies it into `src/renderer/public/ort/`, and `vocalSeparator.ts` points `env.wasm.wasmPaths` at `new URL('./ort/', document.baseURI).href`.
 - **ORT proxy worker.** We set `env.wasm.proxy = true` so inference runs in ORT's own worker. `numThreads = 1` keeps us out of `crossOriginIsolated` requirements.
+- **AudioEngine has a masterGain.** All playback (`play`, `playLoop`, `playNote`) connects through `this.masterGain` rather than `ctx.destination` directly. This is what lets `setSinkId` (Primary) and the `MediaStreamAudioDestinationNode` tap (Monitor) redirect everything in one place. Don't connect new audio paths straight to `ctx.destination` — they would bypass routing.
+- **Sink switches need a user gesture.** `AudioEngine.flushDesired()` only calls `setSinkId` / `audio.play()` after `armUserGesture()` flips a flag. `play()`, `record()`, and the OutputDeviceMenu setters arm it. Hydrate-time calls just stage the desired device IDs. Ignoring this caused autoplay-policy rejects on cold launch.
+- **Piano mode keymap uses `event.code`, not `event.key`.** That's what makes it work on JIS and US layouts — `Quote` and `Backslash` are positionally consistent even though the printed character differs. Labels for the on-screen keyboard come from `navigator.keyboard.getLayoutMap()` when supported, falling back to US characters.
+- **Looper recording reuses `samples:save` with a padId offset.** Loop slot N saves as `padId = 100 + N` so filenames stay collision-free without adding a new IPC. The bank's `loopers[]` array stores the absolute path.
+- **Bank schema is forward-compatible.** New optional fields (e.g. `loopers`) are normalized in `src/main/ipc/bank.ts` on read; the version stays at 1 until a real breaking change.
+- **`stopAll()` stops loops too.** Toolbar Stop all kills both pad voices and looper voices. The Looper panel has its own "Stop loops" button if you only want to halt loops.
 
 ## Persistence layout
 
 ```
 %APPDATA%/otak-sampler/
-  bank.json                              ← atomic tmp + rename
-  samples/<padId>-<timestamp>.wav        ← per-pad samples
+  bank.json                              ← pads, keymap, loopers (atomic tmp + rename)
+  settings.json                          ← primary / monitor output device IDs
+  samples/<padId>-<timestamp>.wav        ← per-pad samples (padId 0..11)
+  samples/<padId>-<timestamp>.wav        ← looper slots saved with padId 100+slotId
   models/UVR-MDX-NET-Voc_FT.onnx         ← downloaded on first vocal isolate
 ```
 
-Bank export packs `bank.json` (with relative `samples/<file>` paths) and the WAVs into a single ZIP saved as `*.sampler`.
+Bank export packs `bank.json` (with relative `samples/<file>` paths) and the WAVs (pads + loopers) into a single ZIP saved as `*.sampler`. `settings.json` is per-machine and not exported.
 
 ## Style and constraints
 
@@ -78,6 +86,10 @@ Jest + ts-jest under `jsdom`. DSP tests are pure logic; no Web Audio mocks neede
 - Code signing (env-var hooks already present in `electron-builder.yml`)
 - Keymap configuration UI (Zustand state already supports per-pad key remap)
 - Auto-slice by transient detection in chop mode (only equal-N split is implemented)
+- Looper tempo sync / tap tempo / quantization
+- Looper overdub (re-record on top of a playing loop)
+- Piano-mode root-note persistence per pad (currently modal-local)
+- Pitch-preserving time-stretch (current piano mode is `playbackRate` only)
 
 ## When in doubt
 

@@ -4,6 +4,7 @@ import { registerBankIpc } from './ipc/bank';
 import { registerSamplesIpc } from './ipc/samples';
 import { registerModelsIpc } from './ipc/models';
 import { registerBankIoIpc } from './ipc/bankio';
+import { registerSettingsIpc } from './ipc/settings';
 
 app.whenReady().then(() => {
   // Register loopback handler BEFORE any renderer can call getDisplayMedia.
@@ -28,6 +29,7 @@ app.whenReady().then(() => {
   registerSamplesIpc();
   registerModelsIpc();
   registerBankIoIpc();
+  registerSettingsIpc();
   createMainWindow();
 
   app.on('activate', () => {

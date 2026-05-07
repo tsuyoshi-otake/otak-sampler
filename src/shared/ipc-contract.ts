@@ -1,4 +1,5 @@
 import type { BankFile } from './bank-schema';
+import type { SettingsFile } from './settings-schema';
 
 export const IPC = {
   samplesSave: 'samples:save',
@@ -9,7 +10,9 @@ export const IPC = {
   modelsEnsure: 'models:ensure',
   modelsProgress: 'models:progress',
   bankExport: 'bank:export',
-  bankImport: 'bank:import'
+  bankImport: 'bank:import',
+  settingsRead: 'settings:read',
+  settingsWrite: 'settings:write'
 } as const;
 
 export type ModelKey = 'voc_ft';
@@ -40,6 +43,9 @@ export interface SamplesDeleteRequest {
 export type BankReadResponse = BankFile;
 export type BankWriteRequest = BankFile;
 
+export type SettingsReadResponse = SettingsFile;
+export type SettingsWriteRequest = SettingsFile;
+
 export interface SamplerApi {
   samples: {
     save: (req: SamplesSaveRequest) => Promise<SamplesSaveResponse>;
@@ -57,6 +63,10 @@ export interface SamplerApi {
   bankIo: {
     export: () => Promise<{ saved: boolean; path?: string }>;
     import: () => Promise<{ imported: boolean; bank?: BankFile }>;
+  };
+  settings: {
+    read: () => Promise<SettingsReadResponse>;
+    write: (settings: SettingsWriteRequest) => Promise<void>;
   };
 }
 

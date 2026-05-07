@@ -12,7 +12,8 @@ export function KeyboardListener(): null {
         const tag = target.tagName.toLowerCase();
         if (tag === 'input' || tag === 'textarea' || target.isContentEditable) return;
       }
-      const { bank, loadedPadIds } = useSampler.getState();
+      const { bank, loadedPadIds, pianoOpen } = useSampler.getState();
+      if (pianoOpen) return;
       const padId = bank.keymap[e.key.toLowerCase()];
       if (padId === undefined) return;
       const pad = bank.pads[padId];

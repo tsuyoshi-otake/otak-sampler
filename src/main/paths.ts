@@ -22,3 +22,8 @@ export async function resolveBankFile(): Promise<string> {
   const root = await resolveDataRoot();
   return join(root, 'bank.json');
 }
+
+export async function resolveSettingsFile(): Promise<string> {
+  const root = await resolveDataRoot();
+  return join(root, 'settings.json');
+}
